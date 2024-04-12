@@ -10,6 +10,9 @@ library(dplyr) # data frame re arrangment
 library(table1) # table for baseline
 library(xtable) # table for baseline
 library(wesanderson) # colors
+# Creat file folder
+dir.create("plot")
+dir.create("metrics")
 
 # Initial setting for stimulation studies
 repetitions = 100  # numbers of estimation 
@@ -35,11 +38,11 @@ ggplot(data = melt(results), aes(x = variable, y = value)) +
                                  hjust=1, size=14)) +          
   scale_fill_brewer(palette = "Paired") +
   coord_flip() +
-  ggsave("sim-simple-100.png", width = 7, height = 8, dpi = 400)
+  ggsave("plot/sim-simple-100.pdf")
 
 # Print performance metrics
 performance_well <- compute_metrics(results, theta, output=T)
-write.csv(performance_well, file = "performance_well.csv", row.names = FALSE)
+write.csv(performance_well, file = "metrics/performance_well.csv", row.names = FALSE)
 
 
 #################################################
@@ -105,28 +108,30 @@ ggplot(data = DF[DF$relative.size == "10%" &
         legend.position="bottom", legend.box = "horizontal") +  # no title in legend
   theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=10)) + 
   scale_fill_brewer(palette = "Paired") +
-  ggsave("sim-RCT-outcome-mis.png", width = 8.5, height = 9.5, dpi = 500)
+  xlim(0, 50)+
+  #annotate("text", x = 0, y = Inf, label = "a)", hjust = 1, vjust = 1, size = 5) +
+  ggsave("plot/sim-RCT-outcome-mis.pdf", width = 8.5, height = 10)
 
 # Print performance metrics
 # 1.when selection is well-specified, outcome is well-specified
 df_wellselection_welloutcome <- filter(data=data, param_RCT = 'correct', outcome = 'correct')
 performance_wellselection_welloutcome <- compute_metrics(df_wellselection_welloutcome, theta, output=T)
-write.csv(performance_wellselection_welloutcome, file = "performance_wellselection_welloutcome.csv", row.names = FALSE)
+write.csv(performance_wellselection_welloutcome, file = "metrics/performance_wellselection_welloutcome.csv", row.names = FALSE)
 
 # 2.when selection is well-specified, outcome is mis-specified
 df_wellselection_badoutcome <- filter(data=data, param_RCT = 'correct', outcome = 'wrong')
 performance_wellselection_badoutcome <- compute_metrics(df_wellselection_badoutcome, theta, output=T)
-write.csv(performance_wellselection_badoutcome, file = "performance_wellselection_badoutcome.csv", row.names = FALSE)
+write.csv(performance_wellselection_badoutcome, file = "metrics/performance_wellselection_badoutcome.csv", row.names = FALSE)
 
 # 3.when selection is mis-specified, outcome is well-specified
 df_badselection_welloutcome <- filter(data=data, param_RCT = 'exponential', outcome = 'correct')
 performance_badselection_welloutcome <- compute_metrics(df_badselection_welloutcome, theta, output=T)
-write.csv(performance_badselection_welloutcome, file = "performance_badselection_welloutcome.csv", row.names = FALSE)
+write.csv(performance_badselection_welloutcome, file = "metrics/performance_badselection_welloutcome.csv", row.names = FALSE)
 
 # 4.when selection is mis-specified, outcome is mis-specified
 df_badselection_badoutcome <- filter(data=data, param_RCT = 'exponential', outcome = 'wrong')
 performance_badselection_badoutcome <- compute_metrics(df_badselection_badoutcome, theta, output=T)
-write.csv(performance_badselection_badoutcome, file = "performance_badselection_badoutcome.csv", row.names = FALSE)
+write.csv(performance_badselection_badoutcome, file = "metrics/performance_badselection_badoutcome.csv", row.names = FALSE)
 
 
 #################################################
@@ -162,24 +167,25 @@ ggplot(data = DF2[DF2$relative.size == "10%" &
   xlab("") +
   ylab("Estimated ATE")  +
   theme(legend.title = element_blank(), 
-        legend.text = element_text(size=9), legend.position="bottom") +
-  theme(axis.text = element_text(angle = 0, vjust = 0.5, hjust=1, size=14)) +
+        legend.text = element_text(size=13), legend.position="bottom") +
+  theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=12)) +
   scale_fill_brewer(palette = "Paired") +
   coord_flip() +
   theme(strip.background=element_rect(fill=NA, color=NA),
         strip.text=element_text(size=15, face = "bold")) +
-  scale_y_continuous(limits = c(-3, 45), breaks = seq(0, 40, by = 5))+
-  ggsave("sim-X1strong-shift.png", width = 9, height = 9.5, dpi=500)
+  #scale_y_continuous(limits = c(-3, 45), breaks = seq(0, 40, by = 5))+
+  ylim(0, 45)+
+  ggsave("plot/sim-X1strong-shift.pdf", width =10, height = 12)
 
 # print performance metrics
 # 1.when X1 weak shift
 df_X1weak <- filter(data=data, param_RCT = 'exponential', outcome = 'correct')
 performance_X1weak <- compute_metrics(df_X1weak, theta, output=T)
-write.csv(performance_X1weak, file = "performance_X1weak.csv", row.names = FALSE)
+write.csv(performance_X1weak, file = "metrics/performance_X1weak.csv", row.names = FALSE)
 # 2.when X1 strong shift
 df_X1strong <- filter(data=data, param_RCT = 'strongbias', outcome = 'correct')
 performance_X1strong <- compute_metrics(df_X1strong, theta, output=T)
-write.csv(performance_X1strong, file = "performance_X1strong.csv", row.names = FALSE)
+write.csv(performance_X1strong, file = "metrics/performance_X1strong.csv", row.names = FALSE)
 
 # print the covariate descriptive table 
 # 1.well-specification simulation: weak shift (including all 4 covariate)
@@ -199,19 +205,19 @@ shift_comparison1 <- rbind(x1weak, one_shifted_simulation2)
 
 ggplot(shift_comparison1, aes(x = X1, group = sample, fill = sample)) +
   #geom_histogram(binwidth = 0.2, alpha=0.4, position="dodge") + 
-  geom_density(alpha=0.4, position="dodge") +
-  scale_fill_manual(values=c("darkorchid4", "darkorange1")) +
+  geom_density(alpha=0.5, position="dodge") +
+  scale_fill_manual(values=c("darkorchid4", "darkorange1"))   +
   theme_classic() +
   theme(legend.title = element_blank(), 
         legend.position = "bottom", 
         legend.box = "horizontal", 
-        legend.text = element_text(size=18, face="bold")) +
+        legend.text = element_text(size=14, face="bold")) +
   ylab("") + 
-  theme(axis.text = element_text(vjust = 0.5, hjust=1, size=14, face="bold"), axis.title.x = element_text(size=18, face="bold")) +
+  theme(axis.text = element_text(vjust = 0.5, hjust=1, size=13, face="bold"), axis.title.x = element_text(size=18, face="bold")) +
   facet_grid(~Shift)  +
   theme(strip.background=element_rect(fill=NA, color=NA),
-        strip.text=element_text(size=15, face = "bold")) +
-  ggsave("X1strongshift.png", width = 8, height = 8.5, dpi=500)
+        strip.text=element_text(size=14, face = "bold")) +
+  ggsave("plot/X1strongshift.pdf", width =8.5, height = 10)
 
 
 
@@ -281,12 +287,13 @@ ggplot(data = melt(results_ipsw2), aes(x = variable, y = value)) +
   xlab("") +
   ylab("Estimated ATE")  +
   theme(legend.title = element_blank(), legend.text = element_text(size=14)) +  
-  theme(axis.text = element_text(angle = 0, vjust = 0.5, hjust=1, size=14)) +          
+  theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=14)) +          
   coord_flip() +
-  ggsave("sim-X1_variation.png",width = 8, height = 8.5, dpi=500)
+  ylim(0, 45)+
+  ggsave("plot/sim-X1_variation.pdf", width =76.5, height = 8)
 
 # print performance metric
 performance_X1variation <- compute_metrics(results_ipsw2, theta=theta, output=T)
-write.csv(performance_X1variation, file = "performance_X1variation.csv", row.names = FALSE)
+write.csv(performance_X1variation, file = "metrics/performance_X1variation.csv", row.names = FALSE)
 
 
