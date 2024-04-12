@@ -1,0 +1,14 @@
+"Estimator","Mean_SD","X95.CI","Bias","Relative_Bias","RMSE","MAE"
+"Naive.OnlyRCT","1.545 (±2.194)","[1.115, 1.975]",-30.455,-95.172,30.533,30.455
+"IPSW","8.5 (±2.743)","[7.962, 9.038]",-23.5,-73.438,23.658,23.5
+"IPSW.norm","14.151 (±4.693)","[13.231, 15.071]",-17.849,-55.778,18.45,17.849
+"IPSW.strat.n.2","18.803 (±4.878)","[17.847, 19.759]",-13.197,-41.241,14.061,13.197
+"IPSW.strat.n.3","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.4","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.5","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.6","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.7","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.8","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.9","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"IPSW.strat.n.10","NaN (±NA)","[NaN, NaN]",NA,NA,NA,NA
+"G.formula","14.175 (±4.008)","[13.389, 14.961]",-17.825,-55.703,18.265,17.825
