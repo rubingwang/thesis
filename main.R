@@ -237,7 +237,7 @@ for (i in 1:repetitions){
                  mean(DF[DF$A == 0  & DF$V == 1, "Y"]))
   
   #ipsw
-  ipsw  <- c(ipsw, compute_ipsw(DF, normalized = FALSE))
+  ipsw  <- c(ipsw, compute_ipsw(DF, normalized = F))
   ipsw_norm <- c(ipsw_norm, compute_ipsw(DF, normalized = T))
   
   #ipsw with X1 only
@@ -257,9 +257,10 @@ for (i in 1:repetitions){
 }
 ipsw_x1x2_only <- ipsw_x1x2_only[ipsw_x1x2_only < max(ipsw_x1x2_only)]
 ipsw_x1x2x3_only <- ipsw_x1x2x3_only[ipsw_x1x2x3_only < max(ipsw_x1x2x3_only)]
-
+  
 results_ipsw <- data.frame("Naive.OnlyRCT" = rct_ate,
-                           "IPSW-X1-X2-X3-X4" = ipsw,
+                           "IPSW-norm" = ipsw_norm,
+                           #"IPSW-X1-X2-X3-X4" = ipsw_x1x2x3_only,
                            "IPSW-X1" = ipsw_x1_only,
                            "IPSW-X1-X2" = ipsw_x1x2_only,
                            "IPSW-X1-X2-X3" = ipsw_x1x2x3_only,
@@ -267,9 +268,10 @@ results_ipsw <- data.frame("Naive.OnlyRCT" = rct_ate,
                            "G.formula" = gformula)
 
 # reorder variables in results_ipsw for a good plot
-results_ipsw2 <- results_ipsw[, c("Naive.OnlyRCT", "IPSW.without.X1", 
-                                  "IPSW.X1", "IPSW.X1.X2", "IPSW.X1.X2.X3",  
-                                  "IPSW.X1.X2.X3.X4","G.formula")]
+results_ipsw2 <- results_ipsw[, c("Naive.OnlyRCT","IPSW.without.X1", 
+                                  "IPSW.X1", "IPSW.X1.X2", "IPSW.X1.X2.X3", 
+                                 # "IPSW.X1.X2.X3.X4", 
+                                  "G.formula")]
 
 ggplot(data = melt(results_ipsw2), aes(x = variable, y = value)) + 
   geom_boxplot(aes(fill=variable)) +
@@ -281,7 +283,7 @@ ggplot(data = melt(results_ipsw2), aes(x = variable, y = value)) +
   theme(legend.title = element_blank(), legend.text = element_text(size=14)) +  
   theme(axis.text = element_text(angle = 0, vjust = 0.5, hjust=1, size=14)) +          
   coord_flip() +
-  ggsave("X1variation.png",width = 8, height = 8.5, dpi=500)
+  ggsave("sim-X1_variation.png",width = 8, height = 8.5, dpi=500)
 
 # print performance metric
 performance_X1variation <- compute_metrics(results_ipsw2, theta=theta, output=T)
