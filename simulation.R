@@ -45,7 +45,7 @@ covariates_names <- names(DF)
     etas <- as.vector(exp(covariates) %*% b_selection + b0_selection + 3.58) # 3 was found manually to keep same proportion m and n
 #  } else if (misRCT == "strongbias"){
     b_selection = c(-1.53, -0.47, -0.60, -0.55)
-    etas <- as.vector (covariates %*% b_selection + b0_selection)
+    etas <- as.vector (covariates %*% b_selection + b0_selection +0.15)
 #  }  
   
   ps = 1 / (1 + exp(-etas))

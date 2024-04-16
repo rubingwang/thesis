@@ -156,6 +156,7 @@ DF2$param_RCT <- ifelse(DF2$param_RCT == "correct",
 DF2$outcome <- ifelse(DF2$outcome == "correct", "Correct Y", "Mis-specified Y")
 
 ggplot(data = DF2[DF2$relative.size == "10%" & 
+                    DF2$outcome == "Correct Y"&
                    (DF2$param_RCT == "X1 shift: weak" | 
                       DF2$param_RCT == "X1 shift: strong"),],
        aes(x = variable, y = value)) +
@@ -163,23 +164,23 @@ ggplot(data = DF2[DF2$relative.size == "10%" &
   facet_wrap(~param_RCT) +
   ##geom_jitter(alpha = 0.2, size = 0.2, width = 0.2)  +
   theme_bw() +
-  geom_hline(aes(yintercept = theta, color = "True ATE"), size = 0.6, linetype="dashed") +
+  geom_hline(aes(yintercept = 31.8, color = "True ATE"), size = 0.6, linetype="dashed") +
   xlab("") +
   ylab("Estimated ATE")  +
   theme(legend.title = element_blank(), 
-        legend.text = element_text(size=13), legend.position="bottom") +
-  theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=12)) +
+        legend.text = element_text(size=14), legend.position="bottom") +
+  theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=13)) +
   scale_fill_brewer(palette = "Paired") +
   coord_flip() +
   theme(strip.background=element_rect(fill=NA, color=NA),
         strip.text=element_text(size=15, face = "bold")) +
   #scale_y_continuous(limits = c(-3, 45), breaks = seq(0, 40, by = 5))+
-  ylim(0, 45)+
-  ggsave("plot/sim-X1strong-shift.pdf", width =10, height = 12)
+  ylim(0, 50)+
+  ggsave("plot/sim-X1strong-shift.pdf", width =11.5, height = 12)
 
 # print performance metrics
 # 1.when X1 weak shift
-df_X1weak <- filter(data=data, param_RCT = 'exponential', outcome = 'correct')
+df_X1weak <- filter(data=data, param_RCT = 'correct', outcome = 'correct')
 performance_X1weak <- compute_metrics(df_X1weak, theta, output=T)
 write.csv(performance_X1weak, file = "metrics/performance_X1weak.csv", row.names = FALSE)
 # 2.when X1 strong shift

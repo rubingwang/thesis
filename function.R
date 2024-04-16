@@ -6,6 +6,8 @@ library(psych)
 ############## Evaluation function ##############
 #################################################
 compute_metrics <- function(df, theta, output = FALSE) {
+  # Remove NaN
+  df <- na.omit(df)
   # Calculate Mean
   mean <- round(colMeans(df), 3)
   # Calculate Standard Deviation
@@ -222,7 +224,7 @@ simulate_continuous <- function(n = 1000, m = 49000,
     etas <- as.vector(exp(covariates) %*% b_selection + b0_selection + 3.58) # 3.58 was found manually to keep same proportion m and n
   } else if (misRCT == "strongbias"){
     b_selection = c(-0.53-1.5, -0.47, -0.60, -0.55)
-    etas <- as.vector (covariates %*% b_selection + b0_selection)
+    etas <- as.vector (covariates %*% b_selection + b0_selection +0.15)
   }  else {
     print("Error in RCT specification arguments.")
     break
