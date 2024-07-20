@@ -11,8 +11,8 @@ library(table1) # table for baseline
 library(xtable) # table for baseline
 library(wesanderson) # colors
 # Creat file folder
-dir.create("plot")
-dir.create("metrics")
+#dir.create("plot")
+#dir.create("metrics")
 
 # Initial setting for stimulation studies
 repetitions = 100  # numbers of estimation 
@@ -21,32 +21,7 @@ theta = 32       # true ATE (of the target population)
 
 
 #################################################
-#########  Simulation1：well-specified ##########
-#################################################
-results <- compute_estimators_and_store(rep = repetitions, n = 1000, m = 10000)
-
-ggplot(data = melt(results), aes(x = variable, y = value)) + 
-  geom_boxplot(aes(fill=variable)) +
-  theme_bw() +
-  geom_hline(aes(yintercept = theta, color = "True ATE"), 
-             size = 0.6, linetype="dashed") +
-  xlab("") +
-  ylab("Estimated ATE")  +
-  theme(legend.title = element_blank(), 
-        legend.text = element_text(size=14)) +  
-  theme(axis.text = element_text(angle = 0, vjust = 0.5, 
-                                 hjust=1, size=14)) +          
-  scale_fill_brewer(palette = "Paired") +
-  coord_flip() +
-  ggsave("plot/sim-simple-100.pdf")
-
-# Print performance metrics
-performance_well <- compute_metrics(results, theta, output=T)
-write.csv(performance_well, file = "metrics/performance_well.csv", row.names = FALSE)
-
-
-#################################################
-##########  Simulation2：mis-specified ##########
+######  Simulation1：systematic analysis ########
 #################################################
 
 RCT_param <- c("correct", "strongbias", "exponential")
@@ -83,7 +58,7 @@ DF <- melt(data ,
               "IPSW.strat.n.4", "IPSW.strat.n.5", 
               "IPSW.strat.n.6", "IPSW.strat.n.7", 
               "IPSW.strat.n.8", "IPSW.strat.n.9", 
-              "IPSW.strat.n.10", "G.formula"))
+              "IPSW.strat.n.10","IPSW.randomforest", "G.formula"))
 
 DF$param_RCT <- ifelse(DF$param_RCT == "correct", 
                        "Well-specified trial selection model", 
@@ -135,7 +110,7 @@ write.csv(performance_badselection_badoutcome, file = "metrics/performance_badse
 
 
 #################################################
-########### Simulation3: X1 Shift ###############
+########### Simulation2: X1 Shift ###############
 #################################################
 
 # this part focus on the X1 shift, when the outcome model is well-specified
@@ -221,7 +196,6 @@ ggplot(shift_comparison1, aes(x = X1, group = sample, fill = sample)) +
   ggsave("plot/X1strongshift.pdf", width =8.5, height = 10)
 
 
-
 #################################################
 ######## Simulation4: X1 effect analysis#########
 #################################################
@@ -250,9 +224,9 @@ for (i in 1:repetitions){
   #ipsw with X1 only
   ipsw_x1_only <- c(ipsw_x1_only, compute_ipsw(DF, normalized = FALSE, covariates = "X1"))
   #ipsw with X1 X2 only
-  ipsw_x1x2_only <- c(ipsw_x1_only, compute_ipsw(DF, normalized = FALSE, covariates = "X1X2"))
+  ipsw_x1x2_only <- c(ipsw_x1x2_only, compute_ipsw(DF, normalized = FALSE, covariates = "X1X2"))
   #ipsw with X1 X2 X3 only
-  ipsw_x1x2x3_only <- c(ipsw_x1_only, compute_ipsw(DF, normalized = FALSE, covariates = "X1X2X3"))
+  ipsw_x1x2x3_only <- c(ipsw_x1x2x3_only, compute_ipsw(DF, normalized = FALSE, covariates = "X1X2X3"))
   
   #ipsw without X1
   ipsw_wo_x1 <- c(ipsw_wo_x1, compute_ipsw(DF, normalized = FALSE, covariates = "-X1"))
@@ -262,39 +236,98 @@ for (i in 1:repetitions){
   
  
 }
-ipsw_x1x2_only <- ipsw_x1x2_only[ipsw_x1x2_only < max(ipsw_x1x2_only)]
-ipsw_x1x2x3_only <- ipsw_x1x2x3_only[ipsw_x1x2x3_only < max(ipsw_x1x2x3_only)]
+
+#ipsw_x1x2_only <- ipsw_x1x2_only[ipsw_x1x2_only < max(ipsw_x1x2_only)]
+#ipsw_x1x2x3_only <- ipsw_x1x2x3_only[ipsw_x1x2x3_only < max(ipsw_x1x2x3_only)]
   
 results_ipsw <- data.frame("Naive.OnlyRCT" = rct_ate,
                            "IPSW-norm" = ipsw_norm,
-                           #"IPSW-X1-X2-X3-X4" = ipsw_x1x2x3_only,
-                           "IPSW-X1" = ipsw_x1_only,
-                           "IPSW-X1-X2" = ipsw_x1x2_only,
-                           "IPSW-X1-X2-X3" = ipsw_x1x2x3_only,
+                           "IPSW-X1-X2-X3-X4" = ipsw_x1_only,
+                           "IPSW-X1" = ipsw,
+                           "IPSW-X1-X2" = ipsw_x1x2x3_only,
+                           "IPSW-X1-X2-X3" = ipsw_x1x2_only,
                            "IPSW-without-X1" = ipsw_wo_x1,
                            "G.formula" = gformula)
 
 # reorder variables in results_ipsw for a good plot
 results_ipsw2 <- results_ipsw[, c("Naive.OnlyRCT","IPSW.without.X1", 
                                   "IPSW.X1", "IPSW.X1.X2", "IPSW.X1.X2.X3", 
-                                 # "IPSW.X1.X2.X3.X4", 
+                                  "IPSW.X1.X2.X3.X4",
                                   "G.formula")]
 
 ggplot(data = melt(results_ipsw2), aes(x = variable, y = value)) + 
   geom_boxplot(aes(fill=variable)) +
   theme_bw() +
-  geom_hline(aes(yintercept = theta, color = "True ATE"), 
+  geom_hline(aes(yintercept = theta, color = "True PATE"), 
              size = 0.6, linetype="dashed") +
   xlab("") +
-  ylab("Estimated ATE")  +
+  ylab("Estimated PATE")  +
   theme(legend.title = element_blank(), legend.text = element_text(size=14)) +  
   theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=14)) +          
   coord_flip() +
   ylim(0, 45)+
-  ggsave("plot/sim-X1_variation.pdf", width =76.5, height = 8)
+  ggsave("plot/sim-X1_variation.pdf", width =7.5, height = 8)
 
 # print performance metric
 performance_X1variation <- compute_metrics(results_ipsw2, theta=theta, output=T)
 write.csv(performance_X1variation, file = "metrics/performance_X1variation.csv", row.names = FALSE)
 
+
+
+########################################################################
+######## Simulation5: X1 effect analysis for the outcome model#########
+########################################################################
+
+rct_ate <- c()
+gformula_wo_x1 <- c()
+gformula_x1 <- c()
+gformula_x1x2 <- c()
+gformula_x1x2x3 <- c()
+gformula_x1x2x3x4 <- c()
+repetitions=100
+for (i in 1:repetitions){
+  #set.seed(1+i)
+  DF <- simulate_continuous(n = 1000, m = 10000)
+  # naive estimator
+  rct_ate <- c(rct_ate, 
+               mean(DF[DF$A == 1 & DF$V == 1, "Y"]) - 
+                 mean(DF[DF$A == 0  & DF$V == 1, "Y"]))
+
+  #gformula
+  gformula_wo_x1 <- c(gformula_wo_x1, compute_gformula(DF, covariates = "-X1"))
+  gformula_x1 <- c(gformula_x1, compute_gformula(DF, covariates = "X1"))
+  gformula_x1x2 <- c(gformula_x1x2, compute_gformula(DF, covariates = "X1X2"))
+  gformula_x1x2x3 <- c(gformula_x1x2x3, compute_gformula(DF, covariates = "X1X2X3"))
+  gformula_x1x2x3x4 <- c(gformula_x1x2x3x4, compute_gformula(DF, covariates = "All"))
+  
+}
+
+results_g <- data.frame("Naive.OnlyRCT" = rct_ate,
+                        "G.formula.without.X1" = gformula_wo_x1,
+                        "G.formula.X1" =  gformula_x1,
+                        "G.formula.X1.X2" =  gformula_x1x2, 
+                        "G.formula.X1.X2.X3" =  gformula_x1x2x3, 
+                        "G.formula.X1.X2.X3.X4" =  gformula_x1x2x3x4 )
+
+# reorder variables in results_ipsw for a good plot
+results_g2 <- results_g[, c("Naive.OnlyRCT", "G.formula.without.X1",
+                            "G.formula.X1","G.formula.X1.X2",
+                            "G.formula.X1.X2.X3","G.formula.X1.X2.X3.X4")]
+
+ggplot(data = melt(results_g2), aes(x = variable, y = value)) + 
+  geom_boxplot(aes(fill=variable)) +
+  theme_bw() +
+  geom_hline(aes(yintercept = 32, color = "True PATE"), 
+             size = 0.6, linetype="dashed") +
+  xlab("") +
+  ylab("Estimated PATE")  +
+  theme(legend.title = element_blank(), legend.text = element_text(size=14)) +  
+  theme(axis.text = element_text(angle = 45, vjust = 0.5, hjust=1, size=14)) +          
+  coord_flip() +
+  ylim(0, 45)+
+  ggsave("plot/sim-X1_variation_gformula.pdf", width =7.5, height = 8)
+
+# print performance metric
+performance_X1variation_g <- compute_metrics(results_g2, theta=32, output=T)
+write.csv(performance_X1variation_g, file = "metrics/performance_X1variation_gformula.csv", row.names = FALSE)
 

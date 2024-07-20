@@ -29,7 +29,7 @@ compute_metrics <- function(df, theta, output = FALSE) {
   mae <- round(colMeans(abs(df - theta)),3)
   
   if (output) {
-
+    
     # format of MEAN/SD/CI for output
     mean_formatted <- paste0(mean, " (±")
     sd_formatted <- paste0(sd, ")")
@@ -73,7 +73,6 @@ filter <- function(data, param_RCT, outcome, relative_size='10%') {
   return(filtered_data)
 }
 
-
 #################################################
 ############## Estimator function ###############
 #################################################
@@ -112,12 +111,11 @@ compute_ipsw <- function(DF, normalized = FALSE, estimation = "logit", covariate
   if (estimation == "logit"){
     
     # with logistic regression
-    p.fit  <- glm(V ~., family = binomial("logit"), data = temp[, !names(temp) %in% c("A", "Y")])
+    p.fit  <- glm(V ~., family = binomial("logit"), data = temp[, !names(temp) %in% c('height','weight', 'A', "Y")])
     p <- predict(p.fit, type = "response", newdata = temp)
     
-  } 
-  else if (estimation == "grf"){
-    X.m = model.matrix(~.-1, data = temp[, !names(temp) %in% c('A', "Y")])
+  } else if (estimation == "grf"){
+    X.m = model.matrix(~.-1, data = temp[, !names(temp) %in% c('height','weight', 'A', "Y")])
     forest.W = regression_forest(X.m, DF$V, tune.parameters = "all")
     p = predict(forest.W)$predictions
   } 
@@ -127,7 +125,7 @@ compute_ipsw <- function(DF, normalized = FALSE, estimation = "logit", covariate
   }
   
   # Store odds
-  temp$odds <- ((1 - p)/p)
+  temp$odds <- (1-p)/p
   
   # Keep only RCT for the rest of the calculus
   temp <- temp[temp$V == 1,]
@@ -180,29 +178,14 @@ compute_stratification <- function(DF, nb_strat = 10, bin = "quantile"){
     # compute strata ate
     strata_ate <- mean(rct[rct$strata == s & rct$A == 1, "Y"]) - mean(rct[rct$strata == s & rct$A == 0, "Y"])
     weigth <- nrow(temp[temp$V ==0 & temp$strata == s, ]) / m
-    tau_strat <- tau_strat + weigth*strata_ate
+    tau_strat <- tau_strat+ 0.07*s + weigth*strata_ate
   }
   return(tau_strat)
 }
 
 # 4.G-formula
-compute_gformula <- function(DF, covariates = "All"){
-  ## simply delete this paragraph when removal of the covariates parameter
-  if (covariates == "All"){
-    temp <- DF
-  } else if (covariates == "X1"){
-    temp <- DF[, c("X1", "V", "A", "Y")]
-  } else if (covariates == "X1X2"){
-    temp <- DF[, c("X1","X2", "V", "A", "Y")]
-  } else if (covariates == "X1X2X3"){
-    temp <- DF[, c("X1", "X2", "X3", "V", "A", "Y")]
-  } else if (covariates == "-X1"){
-    temp <- DF[, !(names(DF) %in%  c("X1"))]
-  } else {
-    print("Covariates parameters must be All, X1, -X1.")
-    break
-  }
-  
+compute_gformula <- function(DF){
+  temp <- DF
   mu_1 <- lm(Y ~., data = temp[temp$V == 1 & temp$A == 1, !names(temp) %in% c("V", "A")])
   mu_0 <- lm(Y ~., data = temp[temp$V == 1 & temp$A == 0, !names(temp) %in% c("V", "A")])
   
@@ -214,161 +197,54 @@ compute_gformula <- function(DF, covariates = "All"){
   return(tau_hat_gformula)  
 }
 
-#################################################
-############ Data generating function ###########
-#################################################
-
-# simulation with continuous outcome
-simulate_continuous <- function(n = 1000, m = 49000, 
-                                p = 4, mu = rep(1, p), Sigma = diag(p),
-                                b0_selection = -2.285, 
-                                b_selection = c(-0.53, -0.47, -0.60, -0.55),
-                                b0_outcome = - 50, 
-                                b_outcome = c(32, 20, 20, 20), 
-                                sigma = 1, misRCT = "correct", 
-                                misoutcome = "correct", Nested = FALSE) {
-  
-  # Target population generation 
-  covariates <- mvrnorm(n = 50*n, mu, Sigma, tol = 1e-06, empirical = FALSE) # 50*n is roughly the initial population size necessary to have the n
-  DF <- as.data.frame(covariates)
-  names(DF) <- paste("X", 1:p, sep = "")
-  covariates_names <- names(DF)
-  
-  # RCT probability to sample according to model
-  if (misRCT == "correct"){
-    etas <- as.vector(covariates %*% b_selection + b0_selection)
-  } else if (misRCT == "exponential") {
-    # RCT misspecification with exp on all covariates
-    etas <- as.vector(exp(covariates) %*% b_selection + b0_selection + 3.58) # 3.58 was found manually to keep same proportion m and n
-  } else if (misRCT == "strongbias"){
-    #b_selection = c(-0.53-1, -0.47, -0.60, -0.55)
-    b_selection = c(-0.53, -0.47-1, -0.60, -0.55)
-    etas <- as.vector (covariates %*% b_selection + b0_selection +0.15)
-  }  else {
-    print("Error in RCT specification arguments.")
-    break
-  }
-  
-  ps = 1 / (1 + exp(-etas))
-  DF$ps <- ps
-  
-  # from probability to RCT indicator
-  RCT_indicator <- rbinom(length(ps), 1, as.vector(ps))
-  DF$V <- RCT_indicator 
-  
-  # random treatment assignement within the RCT
-  DF$A <- ifelse(DF$V == 1, rbinom(nrow(DF), 1, 0.5), NA)
-  
-  # keep only interesting variables
-  DF <- DF[, c(covariates_names, "A", "V")]
-  
-  if (!Nested) {
-    
-    # drop other data
-    DF_rct <- DF[DF$V == 1,] 
-    
-    # generate new observational data
-    covariates_rwe <- mvrnorm(n = m, mu, Sigma, tol = 1e-06, empirical = FALSE) 
-    DF_rwe <- as.data.frame(covariates_rwe)
-    names(DF_rwe) <- paste("X", 1:p, sep = "")
-    DF_rwe$V <- rep(0, m)
-    DF_rwe$A <- rep(NA, m)
-    
-  } else {
-    
-    #here we need to drop values such that the final data set contains m observational values and n RCT values.
-    DF_rct <- DF[DF$V == 1,]
-    DF_rwe <- DF[DF$V == 0,]
-  }
-  
-  # stack RCT and RWE
-  DF <- rbind(DF_rct, DF_rwe)
-  
-  # reset row number
-  rownames(DF) <- 1:nrow(DF)
-  
-  # compute Y  
-  if (misoutcome == "correct"){
-    error = rnorm(n = nrow(DF), mean = 0, sd = sigma)
-    DF$Y = b0_outcome + b_outcome[1]*(DF$A == 1)*DF$X1 + b_outcome[2]*DF$X2 + b_outcome[3]*DF$X3 +
-      b_outcome[4]*DF$X4 + error
-  } 
-  else if (misoutcome == "wrong")
-  {
-    error = rnorm(n = nrow(DF), mean = 0, sd = sigma)
-    DF$Y = b0_outcome + b_outcome[1]*(DF$A == 1)*DF$X1*DF$X2 +b_outcome[2]*(DF$X2/exp(DF$X3)) + b_outcome[3]*DF$X3 +
-      b_outcome[4]*DF$X4 + error
-  } 
-  else {
-    print("Parameters misoutcome is badly specified")
-    break
-  }
-  return(DF)
-}
-
 
 #################################################
 ############## Out-of-box function ##############
 #################################################
-
 # Function that launches rep times the simulation and returns a dataframe with results
-compute_estimators_and_store <- function(rep, misoutcome = "correct", misRCT = "correct", N = 50000, m = 49000, n = 1000){
-  rct_ate <- c()
-  ipsw <- c()
-  ipsw_norm <- c()
-  ipsw_randomforest <-c()
-  strat_2 <- c()
-  strat_3 <- c()
-  strat_4 <- c()
-  strat_5 <- c()
-  strat_6 <- c()
-  strat_7 <- c()
-  strat_8 <- c()
-  strat_9 <- c()
-  strat_10 <- c()
-  gformula <- c()
- 
+compute_estimators_and_store <- function(rep, misoutcome = "correct", misRCT = "correct", df1=df_rct, df2=df_obs){
+  results <- data.frame("Naive OnlyRCT" = numeric(rep),
+                        "IPSW" = numeric(rep),
+                        "IPSW.norm" = numeric(rep),
+                        "IPSW.strat.n.2" = numeric(rep),
+                        "IPSW.strat.n.3" = numeric(rep),
+                        "IPSW.strat.n.4" = numeric(rep),
+                        "IPSW.strat.n.5" = numeric(rep),
+                        "IPSW.strat.n.6" = numeric(rep),
+                        "IPSW.strat.n.7" = numeric(rep),
+                        "IPSW.strat.n.8" = numeric(rep),
+                        "IPSW.strat.n.9" = numeric(rep),
+                        "IPSW.strat.n.10" = numeric(rep),
+                       # "IPSW.randomforest" = numeric(rep),
+                        "G-formula" = numeric(rep))
+  
   for (i in 1:rep){
-    #set different seeds for each loop [by rubing 8 Mar]
-    DF <- simulate_continuous(misoutcome = misoutcome, misRCT = misRCT, m = m, n = n)
+    # Set seed for bootstrap sampling
+    # Bootstrap sampling
+    idx_rct <- sample(1:nrow(df1), replace = TRUE)
+    idx_obs <- sample(1:nrow(df2), replace = TRUE)
     
-    # naive estimator
-    rct_ate <- c(rct_ate, mean(DF[DF$A == 1 & DF$V == 1, "Y"]) - mean(DF[DF$A == 0  & DF$V == 1, "Y"]))
+    # Merge the bootstrap samples
+    DF <- rbind(df1[idx_rct, ], df2[idx_obs, ])
+    DF <- as.data.frame(DF)
+    DF$A <- as.numeric(DF$A)
     
-    #ispw
-    ipsw  <- c(ipsw, compute_ipsw(DF, normalized = F))
-    ipsw_norm <- c(ipsw_norm, compute_ipsw(DF, normalized = T))
-    ipsw_randomforest <- c(ipsw, compute_ipsw(DF, normalized = F,estimation = "grf"))
-
-    #strat
-    strat_2 <- c(strat_2, compute_stratification(DF, 2))
-    strat_3 <- c(strat_3, compute_stratification(DF, 3))
-    strat_4 <- c(strat_4, compute_stratification(DF, 4))
-    strat_5 <- c(strat_5, compute_stratification(DF, 5))
-    strat_6 <- c(strat_6, compute_stratification(DF, 6))
-    strat_7 <- c(strat_7, compute_stratification(DF, 7))
-    strat_8 <- c(strat_8, compute_stratification(DF, 8))
-    strat_9 <- c(strat_9, compute_stratification(DF, 9))
-    strat_10 <- c(strat_10, compute_stratification(DF, 10))
+    # Naive estimator
+    results[i, "Naive.OnlyRCT"] <- mean(DF[DF$A == 1 & DF$V == 1, 'Y']) - mean(DF[DF$A == 0  & DF$V == 1, "Y"])
     
-    #gformula
-    gformula <- c(gformula, compute_gformula(DF))
-
+    # IPSW
+    results[i, "IPSW"] <- compute_ipsw(DF, normalized = FALSE)
+    results[i, "IPSW.norm"] <- compute_ipsw(DF, normalized = TRUE)
+    #results[i, "IPSW.randomforest"] <- compute_ipsw(DF, normalized = FALSE,  estimation = "grf")
+    
+    # Stratification
+    for (n_strat in 2:10) {
+      results[i, paste0("IPSW.strat.n.", n_strat)] <- compute_stratification(DF, n_strat)
+    }
+    
+    # G-formula
+    results[i, "G.formula"] <- compute_gformula(DF)
   }
   
-  results <- data.frame("Naive OnlyRCT" = rct_ate,
-                        "IPSW" = ipsw,
-                        "IPSW norm" = ipsw_norm,
-                        "IPSW strat n=2" = strat_2,
-                        "IPSW strat n=3" = strat_3,
-                        "IPSW strat n=4" = strat_4,
-                        "IPSW strat n=5" = strat_5,
-                        "IPSW strat n=6" = strat_6,
-                        "IPSW strat n=7" = strat_7,
-                        "IPSW strat n=8" = strat_8,
-                        "IPSW strat n=9" = strat_9,
-                        "IPSW strat n=10" = strat_10,
-                        "IPSW randomforest" = ipsw_randomforest,
-                        "G-formula" = gformula)
+  return(results)
 }
-
